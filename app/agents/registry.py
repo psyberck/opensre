@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Iterable
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -25,6 +25,7 @@ class AgentRecord:
     command: str
     registered_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     source: str = "registered"
+    waits_on: list[int] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, object]:
         return asdict(self)
@@ -32,14 +33,23 @@ class AgentRecord:
     @classmethod
     def from_dict(cls, data: dict[str, object]) -> AgentRecord:
         raw_pid = data["pid"]
+        raw_waits = data.get("waits_on", [])
         pid = int(str(raw_pid))
+        waits_on = [int(str(p)) for p in raw_waits] if isinstance(raw_waits, list) else []
         return cls(
             name=str(data["name"]),
             pid=pid,
             command=str(data["command"]),
             registered_at=str(data.get("registered_at", datetime.now(UTC).isoformat())),
             source=str(data.get("source", "registered")),
+            waits_on=waits_on,
         )
+
+    def add_waits_on(self, record: AgentRecord) -> AgentRecord:
+        """Create a new record instead mutating to maintain the immutable contract."""
+        if record.pid in self.waits_on:
+            return self
+        return replace(self, waits_on=[*self.waits_on, record.pid])
 
 
 class AgentRegistry:
