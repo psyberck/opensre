@@ -626,19 +626,22 @@ def _cmd_agents_graph(console: Console) -> bool:
     roots = [pid for pid, r in records.items() if not r.waits_on] or list(records)
 
     trees: list[Tree] = []
+    chain: str | None = None
     for root in roots:
         tree = Tree(label=_label(root))
         cycle = _walk(root, tree, [root], {root})
         if cycle is not None:
             chain = " -> ".join(f"{records[p].name} ({p})" for p in cycle)
-            console.print(f"[{WARNING}]: agent dependency cycle detected: {escape(chain)}.[/]")
-            return True
+            break
         trees.append(tree)
 
     for i, tree in enumerate(trees):
         console.print(tree)
-        if i != len(trees) - 1:
+        if i != len(trees) - 1 and chain is None:
             console.line()
+
+    if chain is not None:
+        console.print(f"[{WARNING}]: agent dependency cycle detected: {escape(chain)}.[/]")
     return True
 
 

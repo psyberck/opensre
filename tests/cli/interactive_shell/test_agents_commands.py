@@ -732,9 +732,7 @@ class TestAgentsGraph:
         assert "aider (7702) [waiting on claude-code]" in out
         assert "cursor-tab (9133) [waiting on aider]" in out.lower()
 
-    def test_cycle_skips_tree_and_prints_warning(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_cycle_prints_warning(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         registry = _isolate_registry(monkeypatch, tmp_path / "agents.jsonl")
         registry.register(AgentRecord(name="alpha", pid=1, command="a", waits_on=(2,)))
         registry.register(AgentRecord(name="beta", pid=2, command="b", waits_on=(1,)))
