@@ -25,7 +25,7 @@ class AgentRecord:
     command: str
     registered_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     source: str = "registered"
-    waits_on: list[int] = field(default_factory=list)
+    waits_on: tuple[int, ...] = ()
 
     def to_dict(self) -> dict[str, object]:
         return asdict(self)
@@ -35,7 +35,7 @@ class AgentRecord:
         raw_pid = data["pid"]
         raw_waits = data.get("waits_on", [])
         pid = int(str(raw_pid))
-        waits_on = [int(str(p)) for p in raw_waits] if isinstance(raw_waits, list) else []
+        waits_on = tuple(int(str(p)) for p in raw_waits) if isinstance(raw_waits, list) else ()
         return cls(
             name=str(data["name"]),
             pid=pid,
@@ -49,7 +49,7 @@ class AgentRecord:
         """Create a new record instead mutating to maintain the immutable contract."""
         if record.pid in self.waits_on:
             return self
-        return replace(self, waits_on=[*self.waits_on, record.pid])
+        return replace(self, waits_on=(*self.waits_on, record.pid))
 
 
 class AgentRegistry:

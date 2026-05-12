@@ -674,7 +674,7 @@ class TestAgentsWait:
 
         reloaded = AgentRegistry(path=registry_path).get(7702)
         assert reloaded is not None
-        assert reloaded.waits_on == [8421]
+        assert reloaded.waits_on == (8421,)
 
     def test_repeated_wait_is_idempotent(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -694,7 +694,7 @@ class TestAgentsWait:
 
         reloaded = AgentRegistry(path=registry_path).get(7702)
         assert reloaded is not None
-        assert reloaded.waits_on == [8421]
+        assert reloaded.waits_on == (8421,)
 
 
 class TestAgentsGraph:
@@ -716,9 +716,9 @@ class TestAgentsGraph:
         #       └── cursor-tab (9133) [waiting on aider]
         registry = _isolate_registry(monkeypatch, tmp_path / "agents.jsonl")
         registry.register(AgentRecord(name="claude-code", pid=8421, command="claude"))
-        registry.register(AgentRecord(name="aider", pid=7702, command="aider", waits_on=[8421]))
+        registry.register(AgentRecord(name="aider", pid=7702, command="aider", waits_on=(8421,)))
         registry.register(
-            AgentRecord(name="cursor-tab", pid=9133, command="cursor", waits_on=[7702])
+            AgentRecord(name="cursor-tab", pid=9133, command="cursor", waits_on=(7702,))
         )
 
         session = ReplSession()
@@ -736,8 +736,8 @@ class TestAgentsGraph:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         registry = _isolate_registry(monkeypatch, tmp_path / "agents.jsonl")
-        registry.register(AgentRecord(name="alpha", pid=1, command="a", waits_on=[2]))
-        registry.register(AgentRecord(name="beta", pid=2, command="b", waits_on=[1]))
+        registry.register(AgentRecord(name="alpha", pid=1, command="a", waits_on=(2,)))
+        registry.register(AgentRecord(name="beta", pid=2, command="b", waits_on=(1,)))
 
         session = ReplSession()
         console, buf = _capture()
@@ -754,9 +754,9 @@ class TestAgentsGraph:
     ) -> None:
         registry = _isolate_registry(monkeypatch, tmp_path / "agents.jsonl")
         registry.register(AgentRecord(name="claude-code", pid=8421, command="claude"))
-        registry.register(AgentRecord(name="aider", pid=7702, command="aider", waits_on=[8421]))
+        registry.register(AgentRecord(name="aider", pid=7702, command="aider", waits_on=(8421,)))
         registry.register(AgentRecord(name="cursor-tab", pid=9133, command="cursor"))
-        registry.register(AgentRecord(name="aider", pid=8491, command="aider", waits_on=[9133]))
+        registry.register(AgentRecord(name="aider", pid=8491, command="aider", waits_on=(9133,)))
 
         session = ReplSession()
         console, buf = _capture()
@@ -772,12 +772,12 @@ class TestAgentsGraph:
     ) -> None:
         registry = _isolate_registry(monkeypatch, tmp_path / "agents.jsonl")
         registry.register(AgentRecord(name="claude-code", pid=8421, command="claude"))
-        registry.register(AgentRecord(name="aider", pid=7702, command="aider", waits_on=[8421]))
+        registry.register(AgentRecord(name="aider", pid=7702, command="aider", waits_on=(8421,)))
         registry.register(
-            AgentRecord(name="cursor-tab", pid=9133, command="cursor", waits_on=[8421])
+            AgentRecord(name="cursor-tab", pid=9133, command="cursor", waits_on=(8421,))
         )
         registry.register(
-            AgentRecord(name="aider", pid=8491, command="aider", waits_on=[9133, 7702])
+            AgentRecord(name="aider", pid=8491, command="aider", waits_on=(9133, 7702))
         )
         session = ReplSession()
         console, buf = _capture()
@@ -794,12 +794,12 @@ class TestAgentsGraph:
         registry.register(AgentRecord(name="claude-code", pid=8421, command="claude"))
         registry.register(AgentRecord(name="cursor-tab", pid=9133, command="cursor"))
         registry.register(
-            AgentRecord(name="aider", pid=7702, command="aider", waits_on=[8421, 9133])
+            AgentRecord(name="aider", pid=7702, command="aider", waits_on=(8421, 9133))
         )
         registry.register(
-            AgentRecord(name="cursor-tab", pid=9134, command="cursor", waits_on=[9133, 8421])
+            AgentRecord(name="cursor-tab", pid=9134, command="cursor", waits_on=(9133, 8421))
         )
-        registry.register(AgentRecord(name="aider", pid=8491, command="aider", waits_on=[9134]))
+        registry.register(AgentRecord(name="aider", pid=8491, command="aider", waits_on=(9134,)))
         session = ReplSession()
         console, buf = _capture()
         assert dispatch_slash("/agents graph", session, console) is True
