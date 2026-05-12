@@ -75,6 +75,7 @@ class AgentRegistry:
     def forget(self, pid: int) -> AgentRecord | None:
         removed = self._records.pop(pid, None)
         if removed is not None:
+            self._scrub_waits_on({pid})
             self._rewrite()
         return removed
 
@@ -94,8 +95,18 @@ class AgentRegistry:
             if record is not None:
                 removed.append(record)
         if removed:
+            self._scrub_waits_on({r.pid for r in removed})
             self._rewrite()
         return removed
+
+    def _scrub_waits_on(self, removed_pids: set[int]) -> None:
+        """Drop ``removed_pids`` from every remaining record's ``waits_on``."""
+        for pid, record in self._records.items():
+            if not record.waits_on:
+                continue
+            left = tuple(p for p in record.waits_on if p not in removed_pids)
+            if len(left) != len(record.waits_on):
+                self._records[pid] = replace(record, waits_on=left)
 
     def list(self) -> list[AgentRecord]:
         return list(self._records.values())
