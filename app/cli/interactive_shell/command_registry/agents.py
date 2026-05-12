@@ -584,30 +584,29 @@ def _cmd_agents_graph(console: Console) -> bool:
     in the loop is emitted instead.
     """
 
-    def _label(pid: int) -> str:
+    def _label(pid: int, ppid: int | None = None) -> str:
         r = records[pid]
-        if not r.waits_on:
+        if ppid is None:
             return f"{escape(r.name)} ({pid}) \\[active]"
 
-        names = ", ".join(records[w].name if w in records else f"pid {w}" for w in r.waits_on)
-        return f"{escape(r.name)} ({pid}) \\[waiting on {escape(names)}]"
+        pr = records[ppid]
+        return f"{escape(r.name)} ({pid}) \\[waiting on {escape(pr.name)}]"
 
     def _walk(pid: int, parent: Tree, path: list[int], visited: set[int]) -> list[int] | None:
-        if pid in visited:
-            return path[path.index(pid) :] + [pid]
+        for child in waiters_of.get(pid, []):
+            if child in visited:
+                return path[path.index(child) :] + [child]
 
-        path.append(pid)
-        visited.add(pid)
-        node = parent.add(_label(pid))
-        try:
-            for child in waiters_of.get(pid, []):
-                cycle = _walk(child, node, path, visited)
-                if cycle is not None:
-                    return cycle
-            return None
-        finally:
+            path.append(child)
+            visited.add(child)
+            node = parent.add(_label(child, pid))
+            c = _walk(child, node, path, visited)
+            if c is not None:
+                return c
+
             path.pop()
-            visited.remove(pid)
+            visited.remove(child)
+        return None
 
     registry = AgentRegistry()
     records = {r.pid: r for r in registry.list()}
@@ -626,15 +625,20 @@ def _cmd_agents_graph(console: Console) -> bool:
     # edge instead of silently exiting on an empty root list.
     roots = [pid for pid, r in records.items() if not r.waits_on] or list(records)
 
-    tree = Tree(label="")
+    trees: list[Tree] = []
     for root in roots:
-        cycle = _walk(root, tree, [], set())
+        tree = Tree(label=_label(root))
+        cycle = _walk(root, tree, [root], {root})
         if cycle is not None:
             chain = " -> ".join(f"{records[p].name} ({p})" for p in cycle)
             console.print(f"[{WARNING}]: agent dependency cycle detected: {escape(chain)}.[/]")
             return True
+        trees.append(tree)
 
-    console.print(tree)
+    for i, tree in enumerate(trees):
+        console.print(tree)
+        if i != len(trees) - 1:
+            console.line()
     return True
 
 
